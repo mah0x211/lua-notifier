@@ -103,7 +103,7 @@ function Notifier:notify( name, ... )
         for callback, obs in pairs( observers ) do
             callback( obs.ctx, ... );
             notified = notified + 1;
-            -- register callback into offlist if ncount value is less than 1
+            -- register a callback into the offlist if count value reached to 0
             if obs.count > 0 then
                 obs.count = obs.count - 1;
                 if obs.count == 0 then
