@@ -43,6 +43,19 @@ luarocks install notifier --from=http://mah0x211.github.io/rocks/
 1. `notifier:table`: an instance of notifier.
 
 
+### Get a number of notification observers 
+
+#### nobs = notifier:getnobs( name:string )
+
+**Parameters**
+
+- `name:string`: event name.
+
+**Returns**
+
+1. `nobs:uint`: number of notification observers
+
+
 ### Unregister an event notification observer
 
 #### notifier = notifier:off( name:string, callback:function )
