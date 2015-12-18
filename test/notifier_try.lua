@@ -51,9 +51,11 @@ end
 notifier
 :on('hello', cbHello, 'hello context')
 :on('hello', cbHello2, 'hello context');
+-- check
+ifNotEqual( notifier:getnobs('hello'), 2 );
 
 -- notify
-notifier:notify('hello');
+ifNotEqual( { notifier:notify('hello') }, { 2, 0 } );
 ifNotEqual( invoked.hello.ctx, 'hello context' );
 ifNotEqual( invoked.hello.count, 1 );
 
@@ -81,6 +83,7 @@ ifNotEqual( invoked.hello2.args, args2 );
 
 -- remove all 'hello' observer
 notifier:off('hello');
+ifNotEqual( notifier:getnobs('hello'), 0 );
 ifNotEqual( { notifier:notify('hello', unpack( args ) ) }, { 0, 0 } );
 ifNotEqual( invoked.hello.ctx, 'hello context' );
 ifNotEqual( invoked.hello.count, 2 );
@@ -92,13 +95,15 @@ ifNotEqual( invoked.hello2.args, args2 );
 
 -- remove observer automatically if called 2 times
 notifier:on('world', cbWorld, 'world context', 2);
-notifier:notify('world', unpack( args ) );
+ifNotEqual( notifier:getnobs('world'), 1 );
+ifNotEqual( { notifier:notify('world', unpack( args ) ) }, { 1, 0 } );
 ifNotEqual( { notifier:notify('world', unpack( args ) ) }, { 1, 1 } );
+ifNotEqual( notifier:getnobs('world'), 0 );
 ifNotEqual( invoked.world.ctx, 'world context' );
 ifNotEqual( invoked.world.count, 2 );
 ifNotEqual( invoked.world.args, args );
 
-notifier:notify('world', unpack( args2 ) );
+ifNotEqual( { notifier:notify('world', unpack( args2 ) ) }, { 0, 0 } );
 ifNotEqual( invoked.world.ctx, 'world context' );
 ifNotEqual( invoked.world.count, 2 );
 ifNotEqual( invoked.world.args, args );
