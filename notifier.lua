@@ -38,14 +38,30 @@ local Notifier = require('halo').class.Notifier;
 
 Notifier:property {
     protected = {
-        notification = {}
+        notification = {},
+        nobservers = {}
     }
 };
+
+
+--- get number of observers
+function Notifier:getnobs( name )
+    local nobs = protected(self).nobservers[name];
+
+    if not isString( name ) then
+        error( 'name must be type of string' );
+    end
+
+    return nobs or 0;
+end
+
 
 --- observe notification
 function Notifier:on( name, callback, ctx, count )
     local own = protected(self);
-    local observers = own.notification[name];
+    local nobservers = own.nobservers;
+    local notification = own.notification;
+    local observers = notification[name];
     local idx;
     
     if not isString( name ) then
@@ -57,7 +73,8 @@ function Notifier:on( name, callback, ctx, count )
     -- create observers[name] table
     elseif not isTable( observers ) then
         observers = setmetatable( {}, { __mode = 'k' } );
-        own.notification[name] = observers;
+        notification[name] = observers;
+        nobservers[name] = 0;
     end
     
     -- add observer
@@ -65,7 +82,9 @@ function Notifier:on( name, callback, ctx, count )
         ctx = ctx,
         count = count or 0
     };
-    
+    -- increment number of observers
+    nobservers[name] = nobservers[name] + 1;
+
     return self;
 end
 
@@ -73,17 +92,30 @@ end
 --- unobserve notification
 function Notifier:off( name, callback )
     local own = protected(self);
-    local observers = own.notification[name];
-    
+    local nobservers = own.nobservers;
+    local notification = own.notification;
+    local observers = notification[name];
+
     if isTable( observers ) then
         -- remove all observers
         if callback == nil then
-            own.notification[name] = nil;
-        -- remove observer associated with callback
-        elseif isFunction( callback ) then
-            observers[callback] = nil;
-        else
+            notification[name] = nil;
+            nobservers[name] = nil;
+        -- invalid type of callback
+        elseif not isFunction( callback ) then
             error( 'callback must be type of function' );
+        -- remove observer associated with callback
+        elseif observers[callback] then
+            observers[callback] = nil;
+
+            -- decrement number of observers
+            if nobservers[name] > 1 then
+                nobservers[name] = nobservers[name] - 1;
+            -- remove empty-observers from notification container
+            else
+                notification[name] = nil;
+                nobservers[name] = nil;
+            end
         end
     end
     
@@ -93,31 +125,44 @@ end
 
 -- invoke notification
 function Notifier:notify( name, ... )
-    local observers = protected(self).notification[name];
+    local own = protected(self);
+    local nobservers = own.nobservers;
+    local notification = own.notification;
+    local observers = notification[name];
     local notified = 0;
     local removed = 0;
     
     if isTable( observers ) then
         local offlist = {};
-        
+        local cb;
+
+        -- notify
         for callback, obs in pairs( observers ) do
             callback( obs.ctx, ... );
             notified = notified + 1;
-            -- register a callback into the offlist if count value reached to 0
+            -- has call counter
             if obs.count > 0 then
                 obs.count = obs.count - 1;
+                -- register a callback into the offlist if reached to 0
                 if obs.count == 0 then
                     offlist[#offlist + 1] = callback;
+                    nobservers[name] = nobservers[name] - 1;
                 end
             end
         end
         
         -- remove callback functions
         removed = #offlist;
-        if removed > 0 then
-            for _, callback in ipairs( offlist ) do
-                observers[callback] = nil;
+        for i = 1, #offlist do
+            cb = offlist[i];
+            if observers[cb] then
+                observers[cb] = nil;
             end
+        end
+
+        -- remove empty-observers from notification container
+        if nobservers[name] < 1 then
+            notification[name] = nil;
         end
     end
     
