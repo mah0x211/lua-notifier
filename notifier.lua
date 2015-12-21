@@ -39,7 +39,9 @@ local Notifier = require('halo').class.Notifier;
 Notifier:property {
     protected = {
         notification = {},
-        nobservers = {}
+        nobservers = {},
+        changelist = {},
+        progress = false
     }
 };
 
@@ -56,13 +58,32 @@ function Notifier:getnobs( name )
 end
 
 
+
+local function addobserver( own, name, callback, obs )
+    local notification = own.notification;
+    local nobservers = own.nobservers;
+    local observers = notification[name];
+
+    -- create observers[name] table
+    if not isTable( observers ) then
+        observers = setmetatable({
+            [callback] = obs
+        },{
+            __mode = 'k'
+        });
+        notification[name] = observers;
+    -- add observer
+    else
+        observers[callback] = obs;
+    end
+end
+
+
 --- observe notification
 function Notifier:on( name, callback, ctx, count )
     local own = protected(self);
     local nobservers = own.nobservers;
-    local notification = own.notification;
-    local observers = notification[name];
-    local idx;
+    local obs;
     
     if not isString( name ) then
         error( 'name must be type of string' );
@@ -70,28 +91,38 @@ function Notifier:on( name, callback, ctx, count )
         error( 'callback must be type of function' );
     elseif count ~= nil and not isUInt( count ) then
         error( 'count must be uint' );
-    -- create observers[name] table
-    elseif not isTable( observers ) then
-        observers = setmetatable( {}, { __mode = 'k' } );
-        notification[name] = observers;
-        nobservers[name] = 0;
+    -- increment number of observers
+    elseif not nobservers[name] then
+        nobservers[name] = 1;
+    else
+        nobservers[name] = nobservers[name] + 1;
     end
-    
-    -- add observer
-    observers[callback] = {
+
+    -- create observer
+    obs = {
         ctx = ctx,
         count = count or 0
     };
-    -- increment number of observers
-    nobservers[name] = nobservers[name] + 1;
+
+    -- add to changelist
+    if own.progress then
+        own.changelist[#own.changelist + 1] = {
+            proc = addobserver,
+            name = name,
+            callback = callback,
+            obs = obs
+        };
+    -- add to observers
+    else
+        addobserver( own, name, callback, obs );
+    end
 
     return self;
 end
 
 
 --- unobserve notification
-function Notifier:off( name, callback )
-    local own = protected(self);
+function delobserver( own, name, callback )
     local nobservers = own.nobservers;
     local notification = own.notification;
     local observers = notification[name];
@@ -108,17 +139,35 @@ function Notifier:off( name, callback )
         elseif observers[callback] then
             observers[callback] = nil;
 
-            -- decrement number of observers
-            if nobservers[name] > 1 then
-                nobservers[name] = nobservers[name] - 1;
             -- remove empty-observers from notification container
-            else
+            if nobservers[name] == 0 then
                 notification[name] = nil;
                 nobservers[name] = nil;
             end
         end
     end
-    
+end
+
+
+function Notifier:off( name, callback )
+    local own = protected(self);
+    local nobservers = own.nobservers;
+
+    if nobservers[name] and nobservers[name] > 0 then
+        -- decrement number of observers
+        nobservers[name] = nobservers[name] - 1;
+
+        if own.progress then
+            own.changelist[#own.changelist + 1] = {
+                proc = delobserver,
+                name = name,
+                callback = callback
+            };
+        else
+            delobserver( own, name, callback );
+        end
+    end
+
     return self;
 end
 
@@ -126,44 +175,48 @@ end
 -- invoke notification
 function Notifier:notify( name, ... )
     local own = protected(self);
-    local nobservers = own.nobservers;
     local notification = own.notification;
     local observers = notification[name];
     local notified = 0;
     local removed = 0;
     
     if isTable( observers ) then
-        local offlist = {};
-        local cb;
+        local changelist = own.changelist;
+        local item;
+
+        -- set progress state
+        own.progress = true;
 
         -- notify
         for callback, obs in pairs( observers ) do
-            callback( obs.ctx, ... );
-            notified = notified + 1;
             -- has call counter
             if obs.count > 0 then
                 obs.count = obs.count - 1;
-                -- register a callback into the offlist if reached to 0
+                -- add callback into the changelist if reached to 0
                 if obs.count == 0 then
-                    offlist[#offlist + 1] = callback;
-                    nobservers[name] = nobservers[name] - 1;
+                    self:off( name, callback );
                 end
             end
-        end
-        
-        -- remove callback functions
-        removed = #offlist;
-        for i = 1, #offlist do
-            cb = offlist[i];
-            if observers[cb] then
-                observers[cb] = nil;
-            end
+
+            notified = notified + 1;
+            callback( obs.ctx, ... );
         end
 
-        -- remove empty-observers from notification container
-        if nobservers[name] < 1 then
-            notification[name] = nil;
+        -- unset progress state
+        own.progress = false;
+
+        -- apply changelist
+        for i = 1, #changelist do
+            item = changelist[i];
+            -- increment remove count
+            if item.proc == delobserver then
+                removed = removed + 1;
+            end
+
+            item.proc( own, item.name, item.callback, item.obs );
         end
+        -- clear changelist
+        own.changelist = {};
     end
     
     return notified, removed;
