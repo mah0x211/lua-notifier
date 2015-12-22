@@ -39,9 +39,7 @@ local Notifier = require('halo').class.Notifier;
 Notifier:property {
     protected = {
         notification = {},
-        nobservers = {},
-        changelist = {},
-        progress = false
+        nobservers = {}
     }
 };
 
@@ -105,7 +103,7 @@ function Notifier:on( name, callback, ctx, count )
     };
 
     -- add to changelist
-    if own.progress then
+    if own.changelist then
         own.changelist[#own.changelist + 1] = {
             proc = addobserver,
             name = name,
@@ -157,7 +155,7 @@ function Notifier:off( name, callback )
         -- decrement number of observers
         nobservers[name] = nobservers[name] - 1;
 
-        if own.progress then
+        if own.changelist then
             own.changelist[#own.changelist + 1] = {
                 proc = delobserver,
                 name = name,
@@ -181,11 +179,11 @@ function Notifier:notify( name, ... )
     local removed = 0;
     
     if isTable( observers ) then
-        local changelist = own.changelist;
+        local changelist = {};
         local item;
 
-        -- set progress state
-        own.progress = true;
+        -- set changelist reference
+        own.changelist = changelist;
 
         -- notify
         for callback, obs in pairs( observers ) do
@@ -202,8 +200,8 @@ function Notifier:notify( name, ... )
             callback( obs.ctx, ... );
         end
 
-        -- unset progress state
-        own.progress = false;
+        -- remove changelist reference
+        own.changelist = nil;
 
         -- apply changelist
         for i = 1, #changelist do
@@ -215,8 +213,6 @@ function Notifier:notify( name, ... )
 
             item.proc( own, item.name, item.callback, item.obs );
         end
-        -- clear changelist
-        own.changelist = {};
     end
     
     return notified, removed;
