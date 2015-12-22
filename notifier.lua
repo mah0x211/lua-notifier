@@ -29,10 +29,11 @@
 
 -- modules
 local inspect = require('util').inspect;
-local isString = require('util.typeof').string;
-local isFunction = require('util.typeof').Function;
-local isTable = require('util.typeof').table;
-local isUInt = require('util.typeof').uint;
+local isString = require('util.is').string;
+local isFunction = require('util.is').Function;
+local isTable = require('util.is').table;
+local isUInt = require('util.is').uint;
+
 -- class
 local Notifier = require('halo').class.Notifier;
 
