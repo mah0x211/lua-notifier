@@ -60,7 +60,6 @@ end
 
 local function addobserver( own, name, callback, obs )
     local notification = own.notification;
-    local nobservers = own.nobservers;
     local observers = notification[name];
 
     -- create observers[name] table
