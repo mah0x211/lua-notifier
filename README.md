@@ -8,6 +8,7 @@ event notification module.
 ## Dependencies
 
 - halo: https://github.com/mah0x211/lua-halo
+- util: https://github.com/mah0x211/lua-util
 
 ## Installation
 
