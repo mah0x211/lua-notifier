@@ -1,17 +1,17 @@
 --[[
-  
+
   Copyright (C) 2015 Masatoshi Teruya
- 
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
- 
+
   The above copyright notice and this permission notice shall be included in
   all copies or substantial portions of the Software.
- 
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
@@ -19,12 +19,12 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   THE SOFTWARE.
-  
-  
+
+
   notifier.lua
   lua-notifier
   Created by Masatoshi Teruya on 15/07/11.
-  
+
 --]]
 
 -- modules
@@ -76,7 +76,7 @@ end
 --- observe notification
 function Notifier:on( name, callback, ctx, count )
     local obs;
-    
+
     if not isString( name ) then
         error( 'name must be type of string' );
     elseif not isFunction( callback ) then
@@ -166,7 +166,7 @@ function Notifier:notify( name, ... )
     local observers = self.notification[name];
     local notified = 0;
     local removed = 0;
-    
+
     if isTable( observers ) then
         local changelist = {};
         local item;
@@ -203,7 +203,7 @@ function Notifier:notify( name, ... )
             item.proc( self, item.name, item.callback, item.obs );
         end
     end
-    
+
     return notified, removed;
 end
 
