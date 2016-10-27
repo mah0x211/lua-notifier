@@ -28,7 +28,6 @@
 --]]
 
 -- modules
-local inspect = require('util').inspect;
 local isString = require('util.is').string;
 local isFunction = require('util.is').Function;
 local isTable = require('util.is').table;
